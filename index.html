@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hayase Yuuka (Pajama) 3D — Gemini 4 Hydrogen × PixiJS 3D</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        background: #dceeff;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        color: #1c2840;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: auto;
+      }
+      #viewport-wrap {
+        position: relative;
+        display: inline-block;
+        box-shadow: 0 18px 48px rgba(32, 58, 102, 0.16);
+        border-radius: 10px;
+        overflow: hidden;
+        background: #cce6ff;
+      }
+      #viewport-wrap canvas {
+        display: block;
+      }
+      .ui-overlay {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .ui-interactive {
+        pointer-events: auto;
+      }
+      /* Top-left collapsible settings */
+      #settings-panel {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 20;
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(110, 150, 210, 0.35);
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 12px;
+        max-width: 270px;
+        box-shadow: 0 6px 20px rgba(30, 50, 90, 0.12);
+      }
+      #settings-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 12px;
+        color: #24385c;
+        background: none;
+        border: none;
+        padding: 0;
+        width: 100%;
+      }
+      #settings-body {
+        margin-top: 8px;
+        display: grid;
+        gap: 7px;
+      }
+      #settings-body.collapsed {
+        display: none;
+      }
+      .setting-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .setting-row label {
+        font-weight: 600;
+        color: #364b70;
+      }
+      .setting-row select,
+      .setting-row button {
+        font-size: 11px;
+        padding: 3px 6px;
+        border-radius: 6px;
+        border: 1px solid rgba(90, 130, 190, 0.45);
+        background: #fff;
+        color: #1c2840;
+        cursor: pointer;
+      }
+      .view-btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .view-btns button {
+        font-size: 11px;
+        padding: 3px 7px;
+        border-radius: 6px;
+        border: 1px solid rgba(90, 130, 190, 0.4);
+        background: #f4f8ff;
+        color: #24385c;
+        cursor: pointer;
+      }
+      .view-btns button.active {
+        background: #3d62b5;
+        color: #fff;
+        border-color: #3d62b5;
+      }
+      /* Bottom-right iteration & score badge */
+      #status-badge {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        z-index: 20;
+        background: rgba(20, 28, 48, 0.82);
+        backdrop-filter: blur(8px);
+        color: #ffffff;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        border: 1px solid rgba(130, 185, 255, 0.35);
+        box-shadow: 0 4px 14px rgba(10, 20, 40, 0.2);
+      }
+      /* WebGPU fallback prompt modal */
+      #webgpu-modal {
+        position: absolute;
+        inset: 0;
+        z-index: 50;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(18, 28, 48, 0.55);
+        backdrop-filter: blur(6px);
+        padding: 20px;
+      }
+      #webgpu-modal.visible {
+        display: flex;
+      }
+      .modal-card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 22px 24px;
+        max-width: 380px;
+        box-shadow: 0 18px 50px rgba(10, 20, 50, 0.3);
+        text-align: center;
+      }
+      .modal-card h2 {
+        margin: 0 0 8px;
+        font-size: 17px;
+        color: #1f3258;
+      }
+      .modal-card p {
+        margin: 0 0 16px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #4a5d80;
+      }
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+      .btn-primary {
+        background: #3d62b5;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .btn-secondary {
+        background: #eef3fb;
+        color: #2c4166;
+        border: 1px solid #c5d4ee;
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewport-wrap">
+      <div class="ui-overlay">
+        <div id="settings-panel" class="ui-interactive">
+          <button id="settings-toggle" type="button">
+            <span>⚙ Scene &amp; Render Settings</span>
+            <span id="settings-arrow">▾</span>
+          </button>
+          <div id="settings-body" class="collapsed">
+            <div class="setting-row">
+              <label for="backend-select">Backend</label>
+              <select id="backend-select">
+                <option value="webgpu">WebGPU (Preferred)</option>
+                <option value="webgl">WebGL2</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label for="res-select">Resolution</label>
+              <select id="res-select">
+                <option value="900x1200">900×1200 (Default)</option>
+                <option value="480">480p (480×640)</option>
+                <option value="1280">1280 (720×1280)</option>
+                <option value="1080">1080p (1080×1920)</option>
+                <option value="2k">2K (1440×2560)</option>
+                <option value="4k">4K (2160×3840)</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label for="orient-select">Orientation</label>
+              <select id="orient-select">
+                <option value="vertical">Vertical</option>
+                <option value="landscape">Landscape</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label for="bg-select">Background</label>
+              <select id="bg-select">
+                <option value="lightblue">Light Blue (Default)</option>
+                <option value="studio">Soft Studio Blue</option>
+                <option value="night">Cozy Pajama Night</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <label>Camera</label>
+            </div>
+            <div class="view-btns">
+              <button type="button" data-cam="front" class="active">Front</button>
+              <button type="button" data-cam="right">Right</button>
+              <button type="button" data-cam="back">Back</button>
+              <button type="button" data-cam="left">Left</button>
+              <button type="button" data-cam="hero">3/4</button>
+              <button type="button" id="turntable-btn">Spin</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="status-badge">Iter 1 / 20 • Score: 0/100 • Init...</div>
+
+        <div id="webgpu-modal" class="ui-interactive">
+          <div class="modal-card">
+            <h2>WebGPU Unavailable</h2>
+            <p id="webgpu-error-msg">
+              WebGPU could not be initialized on this browser or GPU driver. Automatic fallback is disabled per settings.
+            </p>
+            <div class="modal-actions">
+              <button id="fallback-webgl-btn" class="btn-primary" type="button">Switch to WebGL2</button>
+              <button id="retry-webgpu-btn" class="btn-secondary" type="button">Retry WebGPU</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
