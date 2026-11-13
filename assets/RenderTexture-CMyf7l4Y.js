@@ -1,0 +1,1 @@
+import{T as n,c as o}from"./index-Ccmw-EqC.js";function i(t,r){r||(r=0);for(let e=r;e<t.length&&t[e];e++)t[e]=null}class c extends n{static create(r){const{dynamic:e,textureOptions:s,...a}=r;return new c({...s,source:new o(a),dynamic:e??!1})}resize(r,e,s){return this.source.resize(r,e,s),this}}export{c as R,i as c};
